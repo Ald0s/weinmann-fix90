@@ -1,0 +1,92 @@
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Filename:
+' Description:
+' Author:		Alden Viljoen
+' Date:			20190508
+' Version:		V0.30
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' = Summary =
+' With a PP line selected, this function checks if the line needs patching
+' and does so. 
+' Note: depth is param idx 3 
+FUNCTION FixPolygonPoint()
+	DIM iDepth
+	DIM strError
+
+	IF GETPARAM(0) <> CalcType("PP") THEN
+		FixPolygonPoint = 1
+		EXIT FUNCTION
+	END IF
+
+	iDepth = GETPARAM(3)
+	IF iDepth <> -55 THEN
+		IF NOT SETPARAM(3, -55) THEN
+			strError = GETLASTERROR()
+			MsgBox  "Couldn't patch PP: " & strError, VBOKOnly, "Error!"
+
+			FixPolygonPoint = 0
+		END IF
+	END IF
+
+	FixPolygonPoint = 1
+END FUNCTION
+
+' = Summary =
+' Once a record of type 'LS' is found with required criteria, this function coordinates 
+' the finding and fixing of PP lines.
+FUNCTION FixBoard()
+	DIM iNumPP
+
+	iNumPP = 0
+	DO
+		IF GETPARAM(0) = CalcType("PP") THEN
+			iNumPP = iNumPP + 1
+			FixPolygonPoint()
+		END IF
+
+		IF Then
+			EXIT DO ' There's no more rows in the data record.
+		END IF
+		
+		IF NOT FINDNEXT() OR GETPARAM(0) <> CalcType("PP") AND GETPARAM(0) <> CalcType("PAF") AND GETPARAM(0) <> CalcType("KN") THEN
+			EXIT DO
+		END IF
+	LOOP
+
+	FixBoard = iNumPP
+END FUNCTION
+
+' = Summary =
+' Main procedure. Finds and selects LS lines.
+SUB MAIN
+	DIM boards
+	DIM pps
+
+	IF MsgBox ("Please don't run this. Are you sure?", VBYesNo, "Stop!") = 7 THEN
+		EXIT SUB
+	END IF
+
+	boards = 0
+	pps = 0
+	IF FINDFIRSTTYPE(CalcType("LS")) THEN
+		DO
+			' Check if the board is a 90mm board.
+			WHILE GETPARAM(0) = CalcType("LS") AND GETPARAM(3) = 90 THEN
+				DIM intPPS
+				intPPS = FixBoard()
+
+				boards = boards + 1
+				pps = pps + intPPS
+			WEND	 
+
+			IF NOT FINDNEXTTYPE(CalcType("LS")) THEN
+				EXIT DO
+			END IF
+		LOOP
+	END IF
+
+	MsgBox "Patched! Fixed " & boards & " boards and " & pps & " PPs", VBOKOnly, "Complete!"
+END SUB
+
+MAIN
